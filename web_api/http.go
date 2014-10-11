@@ -7,8 +7,16 @@ import (
 )
 
 func main() {
+	err := store.Load("users.json")
+	if err != nil {
+		fmt.Println("Error loading user data: ", err)
+		return
+	}
+
+	fmt.Println(store.domainMap)
+
 	http.HandleFunc("/", asdf)
-	http.ListenAndServe(":8080", nil)
+	// http.ListenAndServe(":8080", nil)
 }
 
 func asdf(w http.ResponseWriter, r *http.Request) {
