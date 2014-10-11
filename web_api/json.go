@@ -44,8 +44,11 @@ func (s *datastore) Init(filename string) error {
 }
 
 func (s *datastore) load() error {
+	// Updating the user database, write lock needed
+	defer s.mutex.Unlock()
+	s.mutex.Lock()
+
 	// Load the data source from disk
-	defer 
 	b, err := ioutil.ReadFile(s.filename)
 	if err != nil {
 		return err
