@@ -29,6 +29,8 @@ type user struct {
 	Password string `json:"password"`
 }
 
+// Init loads the passed in json file, unmarshels the data,
+// and starts a fileWatcher to look for changes to the file
 func (s *datastore) Init(filename string) error {
 	s.filename = filename
 
@@ -48,6 +50,7 @@ func (s *datastore) Init(filename string) error {
 	return nil
 }
 
+// DomainExists checks if the given domain exists in the data store.
 func (s *datastore) DomainExists(domain string) bool {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
@@ -76,6 +79,7 @@ func (s *datastore) UserPasswordValid(domain, username, password string) bool {
 	return false
 }
 
+// loadfile loads the full file from disk
 func (s *datastore) loadFile() ([]byte, error) {
 	// Load the data source from disk
 	b, err := ioutil.ReadFile(s.filename)
