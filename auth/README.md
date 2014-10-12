@@ -31,3 +31,9 @@ The datastore (in json.go) has two interesting designs behind it.
 
 * Instead of reading the file on every request we store it in memory.  To handle if the underlying data file changes, a goroutine runs (every 3 seconds) and checks if the modified timestamp on the file has changed.  If it does, it locks the datastore and reloads the source file.
 * The data from the loaded json file is stuck into a map of maps (map[DomainName]map[UserName]HashedPassword).  This makes lookups easy and detecting duplicate entries within the input file.  The downside is that maps are slow for small inputs and also use lots of memory.
+
+Other
+----- 
+Licensed under BSD-style license.
+
+No external libraries used.
