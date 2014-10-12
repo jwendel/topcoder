@@ -1,15 +1,14 @@
 package auth
 
 import (
-	// "fmt"
-	// "html"
+	"encoding/json"
 	"net/http"
 	"regexp"
 )
 
 type response struct {
-	Access_granted string
-	Reason         string
+	Access_granted bool   `json:"access_granted"`
+	Reason         string `json:"reason,omitempty"`
 }
 
 var regex *regexp.Regexp
@@ -54,6 +53,21 @@ func domainAuth(w http.ResponseWriter, r *http.Request) {
 	password := r.Form.Get("password")
 
 	ok = Store.UserPasswordValid(domain, username, password)
+	res := response{ok, ""}
+	if !ok {
+		s := "denied by policy"
+		res.Reason = s
+	}
+	js, err := json.Marshal(res)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	_, err = w.Write(js)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 }
 
 func defaultHandler(w http.ResponseWriter, r *http.Request) {
