@@ -13,6 +13,6 @@ func main() {
 
 	err := auth.Serve(*listen, *source)
 	if err != nil {
-		fmt.Println("Error starting auth server: ", err)
+		fmt.Println("error starting auth server: ", err)
 	}
 }

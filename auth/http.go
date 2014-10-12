@@ -13,11 +13,12 @@ type webapi struct {
 }
 
 type response struct {
-	Access_granted bool   `json:"access_granted"`
-	Reason         string `json:"reason,omitempty"`
+	AccessGranted bool   `json:"access_granted"`
+	Reason        string `json:"reason,omitempty"`
 }
 
 // Serve creates a webapi and starts the http server
+// Will listen and block unless something goes wrong
 func Serve(listenAddr, jsonFilename string) error {
 	wa, err := NewWebAPI(jsonFilename)
 	if err != nil {

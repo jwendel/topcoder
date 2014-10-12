@@ -17,7 +17,7 @@ func TestHttp(t *testing.T) {
 	ts := httptest.NewServer(wa.Mux)
 	defer ts.Close()
 
-	// Test Case 1 - topcoder.com pass - with lots of extra checks
+	// Test Case 1 - topcoder.com pass - with some extra checks
 	// curl -i --data "username=takumi&password={SHA256}2QJwb00iyNaZbsEbjYHUTTLyvRwkJZTt8yrj4qHWBTU=" http://localhost:8080/api/2/domains/topcoder.com/proxyauth
 	u := ts.URL + "/api/2/domains/topcoder.com/proxyauth"
 	pf := url.Values{}
@@ -138,12 +138,33 @@ func TestHttpExtra(t *testing.T) {
 	ts := httptest.NewServer(wa.Mux)
 	defer ts.Close()
 
+	// GET test for 404
 	res, err := http.Get(ts.URL)
 	if err != nil {
 		t.Errorf("Failed to get response from server: %v", err)
 	}
 	if res.StatusCode != http.StatusNotFound {
 		t.Errorf("GET / - status code: %v expected: %v", res.StatusCode, http.StatusNotFound)
+	}
+
+	// Test for invalid POST param
+	u := ts.URL + "/api/2/domains/appirio.com/proxyauth"
+	pf := url.Values{}
+	pf.Add("BADusername", "jun")
+	pf.Add("password", "{SHA256}/Hnfw7FSM40NiUQ8cY2OFKV8ZnXWAvF3U7/lMKDwmso=")
+	res, err = http.PostForm(u, pf)
+	if err != nil {
+		t.Fatalf("Failed to get response from server: %v", err)
+	}
+	defer res.Body.Close()
+	bytes, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		t.Errorf("POST %v - params: %v - unable to read body: %v", u, pf, err)
+	}
+	body := string(bytes[:])
+	expected := "{\"access_granted\":false,\"reason\":\"denied by policy\"}"
+	if res.StatusCode != http.StatusOK || body != expected {
+		t.Errorf("POST %v - params: %v - res: %v - body: %v", u, pf, res, body)
 	}
 
 }

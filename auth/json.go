@@ -49,8 +49,8 @@ func (s *datastore) Init(filename string) error {
 }
 
 func (s *datastore) DomainExists(domain string) bool {
-	defer s.mutex.RUnlock()
 	s.mutex.RLock()
+	defer s.mutex.RUnlock()
 	_, ok := s.domainMap[domain]
 	return ok
 }
@@ -58,8 +58,8 @@ func (s *datastore) DomainExists(domain string) bool {
 // UserPasswordValid returns true when the password is valid for a given domain/user
 // else it just returns false.  Password is expected to be in encrypted form.
 func (s *datastore) UserPasswordValid(domain, username, password string) bool {
-	defer s.mutex.RUnlock()
 	s.mutex.RLock()
+	defer s.mutex.RUnlock()
 
 	d, ok := s.domainMap[domain]
 	if !ok {
@@ -85,15 +85,15 @@ func (s *datastore) loadFile() ([]byte, error) {
 	return b, nil
 }
 
-// unmarshal converts b to a JSON structure then populates the
+// unmarshal converts bytes to a JSON structure then populates the
 // datastore.dataMap with the results.
-func (s *datastore) unmarshal(b []byte) error {
+func (s *datastore) unmarshal(bytes []byte) error {
 	// Updating the user database, write lock needed
-	defer s.mutex.Unlock()
 	s.mutex.Lock()
+	defer s.mutex.Unlock()
 
 	var domains []domain
-	err := json.Unmarshal(b, &domains)
+	err := json.Unmarshal(bytes, &domains)
 	if err != nil {
 		return err
 	}
@@ -140,12 +140,12 @@ func (s *datastore) fileWatcher() {
 			// file modified time changed, reload data
 			b, err := s.loadFile()
 			if err != nil {
-				fmt.Printf("Error loading file '%v': ", s.filename, err)
+				fmt.Printf("Error loading file '%v': %v", s.filename, err)
 				return
 			}
 			err = s.unmarshal(b)
 			if err != nil {
-				fmt.Printf("Error unmarshling '%v': ", s.filename, err)
+				fmt.Printf("Error unmarshling '%v': %v", s.filename, err)
 				return
 			}
 			s.fileinfo = fi
