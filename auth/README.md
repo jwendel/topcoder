@@ -21,7 +21,9 @@ A different data file can be spcified as well, for example:
 
 Path
 ----
-The auth package should be installed to:  $GOPATH/src/bitbucket.org/kyrra/sandbox/auth
+The auth package should be installed to:  **$GOPATH/src/bitbucket.org/kyrra/sandbox/auth**
+
+This is to satisfy the import path in example/main.go
 
 Design Notes
 ------------
