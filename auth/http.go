@@ -6,43 +6,66 @@ import (
 	"regexp"
 )
 
+type webapi struct {
+	Mux         *http.ServeMux
+	domainRegex *regexp.Regexp
+	store       datastore
+}
+
 type response struct {
 	Access_granted bool   `json:"access_granted"`
 	Reason         string `json:"reason,omitempty"`
 }
 
-var domainRegex *regexp.Regexp
-
-func Start(listenAddr, jsonFilename string) error {
-	err := Store.Init(jsonFilename)
+// Serve creates a webapi and starts the http server
+func Serve(listenAddr, jsonFilename string) error {
+	wa, err := NewWebAPI(jsonFilename)
 	if err != nil {
 		return err
 	}
 
-	domainRegex, err = regexp.Compile("^/api/2/domains/(.+)/proxyauth$")
-	if err != nil {
-		return err
-	}
-
-	http.HandleFunc("/api/2/domains/", domainAuth)
-	http.HandleFunc("/", defaultHandler)
-	return http.ListenAndServe(listenAddr, nil)
+	return http.ListenAndServe(listenAddr, wa.Mux)
 }
 
-func domainAuth(w http.ResponseWriter, r *http.Request) {
+// NewWebAPI creates a webapi and initialized all fields
+// Attach the Mux to a http.Serve to start the listener
+func NewWebAPI(jsonFilename string) (*webapi, error) {
+	domainRegex, err := regexp.Compile("^/api/2/domains/(.+)/proxyauth$")
+	if err != nil {
+		return nil, err
+	}
+
+	var store datastore
+	err = store.Init(jsonFilename)
+	if err != nil {
+		return nil, err
+	}
+
+	mux := http.NewServeMux()
+	wa := webapi{mux, domainRegex, store}
+
+	wa.Mux.HandleFunc("/api/2/domains/", wa.domainAuth)
+	wa.Mux.HandleFunc("/", wa.defaultHandler)
+
+	return &wa, nil
+}
+
+// domainAuth handles domain authentiation based on data in store
+func (wa *webapi) domainAuth(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
 
-	matches := domainRegex.FindStringSubmatch(r.URL.Path)
+	matches := wa.domainRegex.FindStringSubmatch(r.URL.Path)
 	if matches == nil || len(matches) != 2 {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
 
+	// matches[1] is the domain to lookup
 	domain := matches[1]
-	ok := Store.DomainExists(domain)
+	ok := wa.store.DomainExists(domain)
 	if !ok {
 		w.WriteHeader(http.StatusNotFound)
 		return
@@ -52,7 +75,7 @@ func domainAuth(w http.ResponseWriter, r *http.Request) {
 	username := r.Form.Get("username")
 	password := r.Form.Get("password")
 
-	ok = Store.UserPasswordValid(domain, username, password)
+	ok = wa.store.UserPasswordValid(domain, username, password)
 	res := response{ok, ""}
 	if !ok {
 		res.Reason = "denied by policy"
@@ -72,6 +95,7 @@ func domainAuth(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func defaultHandler(w http.ResponseWriter, r *http.Request) {
+// defaultHandler returns 404 for the all paths not explicity specified
+func (wa *webapi) defaultHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotFound)
 }

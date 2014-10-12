@@ -11,7 +11,7 @@ func main() {
 	source := flag.String("datasource", "users.json", "Filename to load JSON user data from")
 	flag.Parse()
 
-	err := auth.Start(*listen, *source)
+	err := auth.Serve(*listen, *source)
 	if err != nil {
 		fmt.Println("Error starting auth server: ", err)
 	}

@@ -9,8 +9,6 @@ import (
 	"time"
 )
 
-var Store datastore
-
 type datastore struct {
 	mutex    sync.RWMutex
 	filename string
