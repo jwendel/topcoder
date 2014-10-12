@@ -2,11 +2,16 @@ package main
 
 import (
 	"bitbucket.org/kyrra/sandbox/auth"
+	"flag"
 	"fmt"
 )
 
 func main() {
-	err := auth.Start(":8080", "users.json")
+	listen := flag.String("listen", ":8080", "Hostname and address to listen on")
+	source := flag.String("datasource", "users.json", "Filename to load JSON user data from")
+	flag.Parse()
+
+	err := auth.Start(*listen, *source)
 	if err != nil {
 		fmt.Println("Error starting auth server: ", err)
 	}

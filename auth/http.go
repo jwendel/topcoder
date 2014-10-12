@@ -11,7 +11,7 @@ type response struct {
 	Reason         string `json:"reason,omitempty"`
 }
 
-var regex *regexp.Regexp
+var domainRegex *regexp.Regexp
 
 func Start(listenAddr, jsonFilename string) error {
 	err := Store.Init(jsonFilename)
@@ -19,14 +19,14 @@ func Start(listenAddr, jsonFilename string) error {
 		return err
 	}
 
-	regex, err = regexp.Compile("^/api/2/domains/(.+)/proxyauth$")
-
-	// /api/2/domains/{domain name}/proxyauth
+	domainRegex, err = regexp.Compile("^/api/2/domains/(.+)/proxyauth$")
+	if err != nil {
+		return err
+	}
 
 	http.HandleFunc("/api/2/domains/", domainAuth)
 	http.HandleFunc("/", defaultHandler)
-	http.ListenAndServe(listenAddr, nil)
-	return nil
+	return http.ListenAndServe(listenAddr, nil)
 }
 
 func domainAuth(w http.ResponseWriter, r *http.Request) {
@@ -35,7 +35,7 @@ func domainAuth(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	matches := regex.FindStringSubmatch(r.URL.Path)
+	matches := domainRegex.FindStringSubmatch(r.URL.Path)
 	if matches == nil || len(matches) != 2 {
 		w.WriteHeader(http.StatusNotFound)
 		return
@@ -55,14 +55,16 @@ func domainAuth(w http.ResponseWriter, r *http.Request) {
 	ok = Store.UserPasswordValid(domain, username, password)
 	res := response{ok, ""}
 	if !ok {
-		s := "denied by policy"
-		res.Reason = s
+		res.Reason = "denied by policy"
 	}
+
 	js, err := json.Marshal(res)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+
+	w.Header().Set("Content-Type", "application/json")
 	_, err = w.Write(js)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)

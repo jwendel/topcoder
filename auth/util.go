@@ -5,8 +5,8 @@ import (
 	"encoding/base64"
 )
 
-// encryptPassword takes a plaintext password and hashes it with SHA256
-func encryptPassword(pw string) string {
+// EncryptPassword takes a plaintext password and hashes it with SHA256
+func EncryptPassword(pw string) string {
 	hasher := sha256.New()
 	b := []byte(pw)
 	hasher.Write(b)
