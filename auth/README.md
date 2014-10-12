@@ -4,20 +4,20 @@ The *auth* package is an implementation of the topcoder challenge: http://www.to
 
 Four .go files come with this package
 
-* example/main.go - Contains a simple main for launching the auth service.  Allows for flags/parameters to be passed to specify input file and listening address/port.
-* http.go - Sets up routes and handlers, and does parsing of input and formatting of output.
-* json.go - datastore for the application.  Handles loading the users.json file, parsing it, and provides lookup functions to see if a domain or user/password are valid.
-* util.go - simple util methods, only contains encryptPassword helper.
+* **example/main.go** - Contains a simple main for launching the auth service.  Allows for flags/parameters to be passed to specify input file and listening address/port.
+* **http.go** - Sets up routes and handlers, and does parsing of input and formatting of output.
+* **json.go** - datastore for the application.  Handles loading the users.json file, parsing it, and provides lookup functions to see if a domain or user/password are valid.
+* **util.go** - simple util methods, only contains encryptPassword helper.
 
 Along with the .go files in auth, there are test files for them as well (run with 'go test').  http_test.go contains the tests outlined in the challenge.  There is an example/test.sh that executes the same test cases with curl but does not validation on the returned data.
 
 The default service starts up ":8080", but the port can be specified to example:
 
-  ./example -listen=":80"
+   `./example -listen=":80"`
 
 A different data file can be spcified as well, for example:
 
-  ./example -listen=":80" -datasource="users2.json"
+   `./example -listen=":80" -datasource="users2.json"`
 
 Path
 ----
