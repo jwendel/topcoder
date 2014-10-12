@@ -1,4 +1,4 @@
-package main
+package auth
 
 import (
 	"fmt"
@@ -6,17 +6,15 @@ import (
 	"net/http"
 )
 
-func main() {
-	err := store.Load("users.json")
+func Start(listenAddr, jsonFilename string) error {
+	err := Store.Init(jsonFilename)
 	if err != nil {
-		fmt.Println("Error loading user data: ", err)
-		return
+		return err
 	}
 
-	fmt.Println(store.domainMap)
-
 	http.HandleFunc("/", asdf)
-	// http.ListenAndServe(":8080", nil)
+	http.ListenAndServe(listenAddr, nil)
+	return nil
 }
 
 func asdf(w http.ResponseWriter, r *http.Request) {

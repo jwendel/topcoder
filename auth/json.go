@@ -1,4 +1,4 @@
-package main
+package auth
 
 import (
 	"encoding/json"
@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-var store datastore
+var Store datastore
 
 type datastore struct {
 	mutex    sync.RWMutex
@@ -43,6 +43,27 @@ func (s *datastore) Init(filename string) error {
 	return nil
 }
 
+func (s *datastore) DomainExists(domain string) bool {
+	_, ok := s.domainMap[domain]
+	return ok
+}
+
+func (s *datastore) UserPasswordValid(domain, username, password string) bool {
+	d, ok := s.domainMap[domain]
+	if !ok {
+		return false
+	}
+	pass, ok := d[username]
+	if !ok {
+		return false
+	}
+
+	if pass == password {
+		return true
+	}
+	return false
+}
+
 func (s *datastore) load() error {
 	// Updating the user database, write lock needed
 	defer s.mutex.Unlock()
@@ -62,7 +83,7 @@ func (s *datastore) load() error {
 	// Loop over all domains and users, inserting them into the domainMap
 	// The user password will be encrypted with this step
 	for _, d := range domains {
-		_, ok := s.domainMap[d.Domain]
+		_, ok := domainMap[d.Domain]
 		if !ok {
 			userMap := make(map[string]string)
 			for _, u := range d.Users {
@@ -73,7 +94,7 @@ func (s *datastore) load() error {
 					return fmt.Errorf("duplicate username '%v' for domain '%v'", u.Username, d.Domain)
 				}
 			}
-			s.domainMap[d.Domain] = userMap
+			domainMap[d.Domain] = userMap
 		} else {
 			return fmt.Errorf("duplicate domains '%v' in input file", d.Domain)
 		}
@@ -84,13 +105,15 @@ func (s *datastore) load() error {
 	return nil
 }
 
+// fileWatcher checks once a second if the source json file has changed
+// based on it's timestamp.  If it chagnes it will reload the user data.
 func (s *datastore) fileWatcher() {
-
 	for {
 		time.Sleep(1 * time.Second)
 		fi, err := os.Stat(s.filename)
 		if err != nil {
 			fmt.Printf("Failed watching file '%v' for updates\n", s.filename)
+			return
 		}
 
 		if !fi.ModTime().Equal(s.fileinfo.ModTime()) {
