@@ -4,23 +4,39 @@ import (
 	"bufio"
 	"fmt"
 	"net"
+	"regexp"
+	"strconv"
 )
 
+// CacheRequest represents a single command sent
+// to the server
 type CacheRequest struct {
-	conn net.Conn
+	conn   net.Conn
+	Cmd    string
+	Subcmd string
 }
 
 type server struct {
-	t net.Listener
-	c map[string]func(c *CacheRequest)
+	t      net.Listener
+	c      map[string]func(c *CacheRequest)
+	cmdReg *regexp.Regexp
 }
 
-func NewServer() (*server, error) {
-	t, err := net.Listen("tcp", ":9000")
+func NewServer(port, maxItems int) (*server, error) {
+	t, err := net.Listen("tcp", ":"+strconv.Itoa(port))
 	if err != nil {
 		return nil, err
 	}
-	s := server{t, make(map[string]func(c *CacheRequest))}
+
+	// a := "a-zA-Z0-9\\!\\#\\$\\%\\&\\'\"\\*\\+\\-\\/\\=\\?\\^\\_\\{\\|\\}\\~\\(\\)\\<\\>\\[\\]\\:\\;\\@\\,\\."
+	a := "a-zA-Z0-9"
+	// r := regexp.MustCompile("^(" + a + ")+( (" + a + ")*)?$")
+	r := regexp.MustCompile("^([" + a + "]+) ?([" + a + "]*)$")
+	if err != nil {
+		return nil, err
+	}
+
+	s := server{t, make(map[string]func(c *CacheRequest)), r}
 
 	return &s, nil
 }
@@ -58,8 +74,14 @@ func (s *server) handle(conn net.Conn) {
 			conn.Write([]byte("ERROR invalid input\r\n"))
 			continue
 		}
+		data = data[0 : len(data)-2]
+		cmds := s.cmdReg.FindStringSubmatch(string(data))
+		fmt.Println("data: ", data)
+		fmt.Println("cmds: ", cmds)
+		for _, v := range cmds {
+			req.write([]byte(v))
+		}
 
-		req.write(data)
 	}
 }
 
