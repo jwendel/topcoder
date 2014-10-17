@@ -17,9 +17,9 @@ type CacheRequest struct {
 }
 
 type server struct {
-	t      net.Listener
-	c      map[string]func(c *CacheRequest)
-	cmdReg *regexp.Regexp
+	t          net.Listener
+	c          map[string]func(c *CacheRequest)
+	validChars *regexp.Regexp
 }
 
 func NewServer(port, maxItems int) (*server, error) {
@@ -28,16 +28,15 @@ func NewServer(port, maxItems int) (*server, error) {
 		return nil, err
 	}
 
-	// a := "a-zA-Z0-9\\!\\#\\$\\%\\&\\'\"\\*\\+\\-\\/\\=\\?\\^\\_\\{\\|\\}\\~\\(\\)\\<\\>\\[\\]\\:\\;\\@\\,\\."
-	a := "a-zA-Z0-9"
-	// r := regexp.MustCompile("^(" + a + ")+( (" + a + ")*)?$")
-	r := regexp.MustCompile("^([" + a + "]+) ?([" + a + "]*)$")
+	// abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!#$%&'\"*+-/=?^_{|}~()<>[]:;@,.
+	a := "a-zA-Z0-9!#$%&'\"*+\\-/\\\\=?^_{|}~()<>\\[\\]:;@,. "
+
+	r := regexp.MustCompile("^[" + a + "]+$")
 	if err != nil {
 		return nil, err
 	}
 
 	s := server{t, make(map[string]func(c *CacheRequest)), r}
-
 	return &s, nil
 }
 
@@ -74,13 +73,12 @@ func (s *server) handle(conn net.Conn) {
 			conn.Write([]byte("ERROR invalid input\r\n"))
 			continue
 		}
+		// Trim \r\n
 		data = data[0 : len(data)-2]
-		cmds := s.cmdReg.FindStringSubmatch(string(data))
+		// Validate
+		cmds := s.validChars.MatchString(string(data))
 		fmt.Println("data: ", data)
 		fmt.Println("cmds: ", cmds)
-		for _, v := range cmds {
-			req.write([]byte(v))
-		}
 
 	}
 }
