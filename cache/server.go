@@ -15,18 +15,33 @@ var validChars *regexp.Regexp
 // CacheRequest represents a single command sent
 // to the server
 type CacheRequest struct {
-	conn   net.Conn
+	C      dataCache
 	Cmd    string
 	Subcmd []string
-	s      *server
+	conn   net.Conn
 	reader *bufio.Reader
 }
 
+type dataCache struct {
+	Cache      map[string]string
+	CacheMutex sync.RWMutex
+	Stats      *dataStats
+	maxItems   int
+}
+
+type dataStats struct {
+	get     int
+	set     int
+	getHits int
+	getMiss int
+	delHits int
+	delMiss int
+}
+
 type server struct {
-	l          net.Listener
-	cmds       map[string]func(c *CacheRequest)
-	cache      map[string]string
-	cacheMutex sync.RWMutex
+	l    net.Listener
+	cmds map[string]func(c *CacheRequest)
+	c    dataCache
 }
 
 func NewServer(port, maxItems int) (*server, error) {
@@ -42,7 +57,9 @@ func NewServer(port, maxItems int) (*server, error) {
 	s := server{}
 	s.l = l
 	s.cmds = make(map[string]func(c *CacheRequest))
-	s.cache = make(map[string]string)
+	s.c.Cache = make(map[string]string)
+	s.c.maxItems = maxItems
+	s.c.Stats = &dataStats{}
 
 	return &s, nil
 }
@@ -78,12 +95,12 @@ func (s *server) handle(conn net.Conn) {
 	req := CacheRequest{}
 	req.reader = bufio.NewReader(conn)
 	req.conn = conn
-	req.s = s
+	req.C = s.c
 
 	for {
 		data, err := req.readln()
 		if err != nil {
-			fmt.Println("error reading data: ", err)
+			fmt.Println("error reading data:", err)
 			return
 		}
 
@@ -130,7 +147,6 @@ func (s *server) processInput(input string, c CacheRequest) {
 func (c *CacheRequest) readln() ([]byte, error) {
 	data, err := c.reader.ReadBytes('\n')
 	if err != nil {
-		fmt.Println("error reading data: ", err)
 		c.conn.Close()
 		return nil, err
 	}
