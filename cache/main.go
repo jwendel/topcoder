@@ -1,3 +1,7 @@
+// Copyright 2014 James Wendel. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.package main
+
 package main
 
 import (
@@ -12,17 +16,17 @@ func main() {
 
 	s, err := NewServer(*p, *i)
 	if err != nil {
-		fmt.Println("Failed to create server: ", err)
+		fmt.Println("failed to create server: ", err)
 		return
 	}
 
 	err = registerHandlers(s)
 	if err != nil {
-		fmt.Println("Failed to start server: ", err)
+		fmt.Println("failed to register handlers: ", err)
 		return
 	}
 
-	fmt.Println("Ready to accept cache requests")
+	fmt.Println("ready to accept cache requests")
 	s.Serve()
 }
 

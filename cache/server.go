@@ -1,42 +1,21 @@
+// Copyright 2014 James Wendel. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
 package main
 
 import (
 	"bufio"
 	"fmt"
 	"net"
+	"os"
+	"os/signal"
 	"regexp"
 	"strconv"
 	"strings"
-	"sync"
 )
 
 var validChars *regexp.Regexp
-
-// CacheRequest represents a single command sent
-// to the server
-type CacheRequest struct {
-	C      dataCache
-	Cmd    string
-	Subcmd []string
-	conn   net.Conn
-	reader *bufio.Reader
-}
-
-type dataCache struct {
-	Cache      map[string]string
-	CacheMutex sync.RWMutex
-	Stats      *dataStats
-	maxItems   int
-}
-
-type dataStats struct {
-	get       int
-	set       int
-	getHits   int
-	getMisses int
-	delHits   int
-	delMisses int
-}
 
 type server struct {
 	l    net.Listener
@@ -65,6 +44,8 @@ func NewServer(port, maxItems int) (*server, error) {
 }
 
 func (s *server) Serve() error {
+
+	s.startSigHandler()
 
 	for {
 		conn, err := s.l.Accept()
@@ -98,37 +79,28 @@ func (s *server) handle(conn net.Conn) {
 	req.C = s.c
 
 	for {
-		data, err := req.readln()
+		data, err := req.Readln()
 		if err != nil {
 			fmt.Println("error reading data:", err)
 			return
 		}
 
-		// Check that it was \r\n
-		if len(data) < 2 || data[len(data)-2] != '\r' {
-			req.writeStr("ERROR invalid input")
+		input, err := req.ValidateInput(data)
+		if err != nil {
+			req.WriteStr(err.Error())
+			continue
+		}
+		if len(input) == 0 {
 			continue
 		}
 
-		// Trim \r\n
-		data = data[:len(data)-2]
-		// Validate string data
-		if len(data) == 0 {
-			continue
-		}
-
-		s.processInput(string(data), req)
+		s.processInput(string(data), &req)
 	}
 }
 
-func (s *server) processInput(input string, c CacheRequest) {
-	if !validChars.MatchString(input) {
-		c.writeStr("ERROR invalid input characters")
-		return
-	}
-
+func (s *server) processInput(input string, c *CacheRequest) {
 	cmds := strings.Fields(input)
-	if len(cmds) == 0 { // TODO: remove?
+	if len(cmds) == 0 {
 		return
 	}
 
@@ -137,28 +109,21 @@ func (s *server) processInput(input string, c CacheRequest) {
 
 	f, ok := s.cmds[c.Cmd]
 	if !ok {
-		c.writeStr("ERROR unknown command")
+		c.WriteStr("ERROR unknown command")
 		return
 	}
 
-	f(&c)
+	f(c)
 }
 
-func (c *CacheRequest) readln() ([]byte, error) {
-	data, err := c.reader.ReadBytes('\n')
-	if err != nil {
-		c.conn.Close()
-		return nil, err
-	}
-	return data, nil
-}
+func (s *server) startSigHandler() {
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
 
-func (c *CacheRequest) writeStr(s string) {
-	data := append([]byte(s), []byte("\r\n")...)
-	c.conn.Write(data)
-}
-
-func (c *CacheRequest) write(b []byte) {
-	data := append(b, []byte("\r\n")...)
-	c.conn.Write(data)
+	go func() {
+		for sig := range c {
+			s.c.CacheMutex.Lock()
+			os.Exit(0)
+		}
+	}()
 }
