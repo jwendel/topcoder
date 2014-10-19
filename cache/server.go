@@ -30,12 +30,12 @@ type dataCache struct {
 }
 
 type dataStats struct {
-	get     int
-	set     int
-	getHits int
-	getMiss int
-	delHits int
-	delMiss int
+	get       int
+	set       int
+	getHits   int
+	getMisses int
+	delHits   int
+	delMisses int
 }
 
 type server struct {
@@ -127,7 +127,7 @@ func (s *server) processInput(input string, c CacheRequest) {
 		return
 	}
 
-	cmds := strings.Split(input, " ")
+	cmds := strings.Fields(input)
 	if len(cmds) == 0 { // TODO: remove?
 		return
 	}
