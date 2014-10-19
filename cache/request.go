@@ -14,11 +14,11 @@ import (
 // CacheRequest represents a single command sent
 // to the server
 type CacheRequest struct {
-	C      dataCache
-	Cmd    string
-	Subcmd []string
-	conn   net.Conn
-	reader *bufio.Reader
+	C       dataCache
+	Cmd     string
+	Subcmd  []string
+	Conn    net.Conn
+	scanner *bufio.Scanner
 }
 
 // dataCache stores all cache information for the
@@ -66,11 +66,12 @@ func (c *CacheRequest) ValidateInput(data []byte) (string, error) {
 
 // Readln will block waiting for a full line of input from the client.
 func (c *CacheRequest) Readln() ([]byte, error) {
-	data, err := c.reader.ReadBytes('\n')
-	if err != nil {
-		c.conn.Close()
+	ok := c.scanner.Scan()
+	if err := c.scanner.Err(); !ok || err != nil {
+		c.Conn.Close()
 		return nil, err
 	}
+	data := c.scanner.Bytes()
 	return data, nil
 }
 
@@ -78,5 +79,5 @@ func (c *CacheRequest) Readln() ([]byte, error) {
 // a \r\n.
 func (c *CacheRequest) WriteStr(s string) {
 	data := append([]byte(s), []byte("\r\n")...)
-	c.conn.Write(data)
+	c.Conn.Write(data)
 }

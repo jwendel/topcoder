@@ -133,5 +133,5 @@ func cmdQuit(c *CacheRequest) {
 		return
 	}
 
-	c.conn.Close()
+	c.Conn.Close()
 }

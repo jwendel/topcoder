@@ -6,6 +6,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"net"
 	"os"
@@ -94,18 +95,17 @@ func (s *server) AddHandler(name string, f func(c *CacheRequest)) error {
 // processing the requests
 func (s *server) handle(conn net.Conn) {
 
-	// Do we want to enable read timeout?
-	// conn.SetReadDeadline(t)
-
 	req := CacheRequest{}
-	req.reader = bufio.NewReader(conn)
-	req.conn = conn
+	// req.reader = bufio.NewReader(conn)
+	req.scanner = bufio.NewScanner(conn)
+	req.scanner.Split(scanLines)
+	req.Conn = conn
 	req.C = s.c
 
 	for {
 		data, err := req.Readln()
 		if err != nil {
-			req.conn.Close()
+			req.Conn.Close()
 			return
 		}
 
@@ -120,6 +120,25 @@ func (s *server) handle(conn net.Conn) {
 
 		s.processInput(string(data), &req)
 	}
+}
+
+// scanLines is a copy of bufio.Scanner.ScanLines.  This version removed the
+// call to dropCR, as we want the CR there still to validate it does indeed
+// end with \r\n.
+func scanLines(data []byte, atEOF bool) (advance int, token []byte, err error) {
+	if atEOF && len(data) == 0 {
+		return 0, nil, nil
+	}
+	if i := bytes.IndexByte(data, '\n'); i >= 0 {
+		// We have a full newline-terminated line.
+		return i + 1, data[0 : i+1], nil
+	}
+	// If we're at EOF, we have a final, non-terminated line. Return it.
+	if atEOF {
+		return len(data), data, nil
+	}
+	// Request more data.
+	return 0, nil, nil
 }
 
 // processInput takes a string, splits it by space, then calls
