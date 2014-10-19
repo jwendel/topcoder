@@ -33,6 +33,11 @@ func cmdSet(c *CacheRequest) {
 		return
 	}
 
+	if len(input) == 0 {
+		c.WriteStr(fmt.Sprintf("ERROR data must have at least 1 character in it"))
+		return
+	}
+
 	if len(input) >= MAX_DATA_SIZE {
 		c.WriteStr(fmt.Sprintf("ERROR data can only be %v characters long", MAX_DATA_SIZE))
 		return
