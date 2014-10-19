@@ -15,21 +15,33 @@ import (
 	"strings"
 )
 
+const (
+	MAX_KEY_SIZE  = 250
+	MAX_DATA_SIZE = 8192
+)
+
+// validChars is used to make sure there are only supports ascii character
+// in a given string
 var validChars *regexp.Regexp
 
+// server is the TCP server for the cache application.
+// It maintains the TCP listener, the map of commands to
+// their given function, and keeps the dataCache to pass
+// to each new connection.
 type server struct {
 	l    net.Listener
 	cmds map[string]func(c *CacheRequest)
 	c    dataCache
 }
 
+// NewServer initializes everything needed to handle new
+// connections to the cache server.
 func NewServer(port, maxItems int) (*server, error) {
 	l, err := net.Listen("tcp", ":"+strconv.Itoa(port))
 	if err != nil {
 		return nil, err
 	}
 
-	// abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!#$%&'\"*+-/=?^_{|}~()<>[]:;@,.
 	a := "a-zA-Z0-9!#$%&'\"*+\\-/\\\\=?^_{|}~()<>\\[\\]:;@,. "
 	validChars = regexp.MustCompile("^[" + a + "]+$")
 
@@ -43,6 +55,8 @@ func NewServer(port, maxItems int) (*server, error) {
 	return &s, nil
 }
 
+// Server will start accepting new connections and
+// pass each new connection onto its own goroutine.
 func (s *server) Serve() error {
 
 	s.startSigHandler()
@@ -54,6 +68,12 @@ func (s *server) Serve() error {
 		}
 		go s.handle(conn)
 	}
+}
+
+// Close will shut down the listening socket.  Any open
+// connections remain open.
+func (s *server) Close() {
+	s.l.Close()
 }
 
 // AddHandler adds a new command handler for the server to call when
@@ -68,6 +88,8 @@ func (s *server) AddHandler(name string, f func(c *CacheRequest)) error {
 	return nil
 }
 
+// handle take a connection and reads data from it,
+// processing the requests
 func (s *server) handle(conn net.Conn) {
 
 	// Do we want to enable read timeout?
@@ -81,7 +103,7 @@ func (s *server) handle(conn net.Conn) {
 	for {
 		data, err := req.Readln()
 		if err != nil {
-			fmt.Println("error reading data:", err)
+			req.conn.Close()
 			return
 		}
 
@@ -98,6 +120,8 @@ func (s *server) handle(conn net.Conn) {
 	}
 }
 
+// processInput takes a string, splits it by space, then calls
+// the appropriate cmd function to handle the request
 func (s *server) processInput(input string, c *CacheRequest) {
 	cmds := strings.Fields(input)
 	if len(cmds) == 0 {
@@ -116,13 +140,17 @@ func (s *server) processInput(input string, c *CacheRequest) {
 	f(c)
 }
 
+// startSigHandler create a goroutine to wait for SIGINT calls,
+// gets the write lock then shuts down.
 func (s *server) startSigHandler() {
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 
 	go func() {
-		for sig := range c {
+		for _ = range c {
 			s.c.CacheMutex.Lock()
+			fmt.Println("shutting down server")
+			s.l.Close()
 			os.Exit(0)
 		}
 	}()

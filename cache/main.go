@@ -1,7 +1,14 @@
 // Copyright 2014 James Wendel. All rights reserved.
 // Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSE file.package main
+// license that can be found in the LICENSE file.
 
+/*
+Implementation of a simple cache server for TopCoder.  See url for details:
+http://www.topcoder.com/challenge-details/30046225/?type=develop
+
+This program takes a subset of ascii data input can can be uased to trigger
+command handlers to further work on the input.
+*/
 package main
 
 import (
@@ -9,6 +16,8 @@ import (
 	"fmt"
 )
 
+// main Entrypoint to the application.  Defines command line flags,
+// creates cache server, registers handlers, and starts serving.
 func main() {
 	p := flag.Int("port", 11212, "Port the server listens on")
 	i := flag.Int("items", 65535, "Maximum number of items to cache")
@@ -30,6 +39,8 @@ func main() {
 	s.Serve()
 }
 
+// registerHandlers will associate command handlers to their
+// given command available via the server.
 func registerHandlers(s *server) error {
 	err := s.AddHandler("set", cmdSet)
 	if err != nil {
