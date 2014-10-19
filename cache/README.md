@@ -8,6 +8,7 @@ Notes
 -----
 * Command input has all whitespace trimmed (beginning/trailing spaces are ignored, and multiple spaces between parameters).
 * Server supports multiple connections at once.
+* Mutex is used when accessing the cache.  Almost all locks are write locks (not RLock) as we need to update the dataStats with 4 of the commands.
 
 Extensibility
 -------------
@@ -21,16 +22,18 @@ The passed in CacheRequest contains everything that a helper should need to proc
 
 Running
 -------
-* cd $GOPATH/src/bitbucket.org/kyrra/sandbox/cache
+* cd $GOPATH/src/topcoder.com/kyrra/scs/
 * go build
-* ./cache --help
+* ./scs --help
 
-```Usage of ./cache:
+```
+Usage of ./scs:
   -items=65535: Maximum number of items to cache
-  -port=11212: Port the server listens on```
+  -port=11212: Port the server listens on
+```
 
-* ./cache
+* ./scs
 
 Path
 ----
-The cache package should be installed to:  **$GOPATH/src/bitbucket.org/kyrra/sandbox/cache**
+The cache package should be installed to:  **$GOPATH/src/topcoder.com/kyrra/scs/**
