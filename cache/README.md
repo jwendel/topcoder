@@ -9,6 +9,7 @@ Notes
 * Command input has all whitespace trimmed (beginning/trailing spaces are ignored, and multiple spaces between parameters).
 * Server supports multiple connections at once.
 * Mutex is used when accessing the cache.  Almost all locks are write locks (not RLock) as we need to update the dataStats with 4 of the commands.
+* examples_test.go has a number of extra tests added to it to verify behavior.
 
 Extensibility
 -------------
