@@ -21,6 +21,8 @@ type CacheRequest struct {
 	reader *bufio.Reader
 }
 
+// dataCache stores all cache information for the
+// entire server
 type dataCache struct {
 	Cache      map[string]string
 	CacheMutex sync.RWMutex
@@ -28,6 +30,7 @@ type dataCache struct {
 	maxItems   int
 }
 
+// dataStats tracks usage information for the entire server
 type dataStats struct {
 	get       int
 	set       int
@@ -37,6 +40,9 @@ type dataStats struct {
 	delMisses int
 }
 
+// ValidateInput takes a raw byte input from a client, validates and removes
+// the trailing \r\n, validates the characters are acceptable, and returns the
+// data as a string.
 func (c *CacheRequest) ValidateInput(data []byte) (string, error) {
 	// Check that it was \r\n
 	if len(data) < 2 || data[len(data)-2] != '\r' {
@@ -58,6 +64,7 @@ func (c *CacheRequest) ValidateInput(data []byte) (string, error) {
 	return input, nil
 }
 
+// Readln will block waiting for a full line of input from the client.
 func (c *CacheRequest) Readln() ([]byte, error) {
 	data, err := c.reader.ReadBytes('\n')
 	if err != nil {
@@ -67,12 +74,9 @@ func (c *CacheRequest) Readln() ([]byte, error) {
 	return data, nil
 }
 
+// WriteStr writes out a string to the connection.  It will append
+// a \r\n.
 func (c *CacheRequest) WriteStr(s string) {
 	data := append([]byte(s), []byte("\r\n")...)
-	c.conn.Write(data)
-}
-
-func (c *CacheRequest) Write(b []byte) {
-	data := append(b, []byte("\r\n")...)
 	c.conn.Write(data)
 }

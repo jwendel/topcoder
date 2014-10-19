@@ -25,9 +25,9 @@ Running
 * go build
 * ./cache --help
 
-  `Usage of ./cache:`
-  `  -items=65535: Maximum number of items to cache`
-  `  -port=11212: Port the server listens on`
+```Usage of ./cache:
+  -items=65535: Maximum number of items to cache
+  -port=11212: Port the server listens on```
 
 * ./cache
 
