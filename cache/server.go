@@ -35,9 +35,11 @@ type server struct {
 }
 
 // NewServer initializes everything needed to handle new
-// connections to the cache server.
-func NewServer(port, maxItems int) (*server, error) {
-	l, err := net.Listen("tcp", ":"+strconv.Itoa(port))
+// connections to the cache server.  It attempts the address
+// and port to listen on, along with the max items the cache
+// can store.
+func NewServer(addr string, port, maxItems int) (*server, error) {
+	l, err := net.Listen("tcp", addr+":"+strconv.Itoa(port))
 	if err != nil {
 		return nil, err
 	}

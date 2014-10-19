@@ -12,11 +12,12 @@ import (
 // TestExamples runs the examples outlined in the topcoder challenge
 func TestExamples(t *testing.T) {
 
-	s, err := NewServer(11212, 65535)
+	s, err := NewServer("localhost", 0, 65535)
 	if err != nil {
 		t.Errorf("failed to create server: %v", err)
 		return
 	}
+	addr := s.l.Addr().String()
 
 	err = registerHandlers(s)
 	if err != nil {
@@ -25,7 +26,7 @@ func TestExamples(t *testing.T) {
 	}
 	go s.Serve()
 
-	n, err := net.Dial("tcp", "127.0.0.1:11212")
+	n, err := net.Dial("tcp", addr)
 	if err != nil {
 		t.Errorf("unable to connect to server: %v", err)
 		return
@@ -229,7 +230,7 @@ func TestExamples(t *testing.T) {
 // TestRegex makes sure the regex passes all the characters expected
 func TestRegex(t *testing.T) {
 
-	s, err := NewServer(11212, 5)
+	s, err := NewServer("localhost", 0, 5)
 	if err != nil {
 		t.Errorf("failed to create server: %v", err)
 		return
@@ -252,11 +253,12 @@ func TestRegex(t *testing.T) {
 // and runs 'set' calls from all 3 in goroutines.
 func TestMultiConnect(t *testing.T) {
 	// Server setup
-	s, err := NewServer(11212, 65535)
+	s, err := NewServer("localhost", 0, 65535)
 	if err != nil {
 		t.Errorf("failed to create server: %v", err)
 		return
 	}
+	addr := s.l.Addr().String()
 
 	err = registerHandlers(s)
 	if err != nil {
@@ -266,21 +268,21 @@ func TestMultiConnect(t *testing.T) {
 	go s.Serve()
 
 	// connection setup
-	n1, err := net.Dial("tcp", "127.0.0.1:11212")
+	n1, err := net.Dial("tcp", addr)
 	if err != nil {
 		t.Errorf("unable to connect to server: %v", err)
 		return
 	}
 	n1.SetDeadline(time.Now().Add(5 * time.Second))
 
-	n2, err := net.Dial("tcp", "127.0.0.1:11212")
+	n2, err := net.Dial("tcp", addr)
 	if err != nil {
 		t.Errorf("unable to connect to server: %v", err)
 		return
 	}
 	n2.SetDeadline(time.Now().Add(5 * time.Second))
 
-	n3, err := net.Dial("tcp", "127.0.0.1:11212")
+	n3, err := net.Dial("tcp", addr)
 	if err != nil {
 		t.Errorf("unable to connect to server: %v", err)
 		return
@@ -383,11 +385,12 @@ func TestMultiConnect(t *testing.T) {
 // TestSizes verifies the max key and data sizes behave properly.
 func TestSizes(t *testing.T) {
 	// Server setup
-	s, err := NewServer(11212, 65535)
+	s, err := NewServer("localhost", 0, 65535)
 	if err != nil {
 		t.Errorf("failed to create server: %v", err)
 		return
 	}
+	addr := s.l.Addr().String()
 
 	err = registerHandlers(s)
 	if err != nil {
@@ -397,7 +400,7 @@ func TestSizes(t *testing.T) {
 	go s.Serve()
 
 	// connection setup
-	n, err := net.Dial("tcp", "127.0.0.1:11212")
+	n, err := net.Dial("tcp", addr)
 	if err != nil {
 		t.Errorf("unable to connect to server: %v", err)
 		return

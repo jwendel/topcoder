@@ -19,11 +19,12 @@ import (
 // main Entrypoint to the application.  Defines command line flags,
 // creates cache server, registers handlers, and starts serving.
 func main() {
+	a := flag.String("addr", "", "IP address the server binds to")
 	p := flag.Int("port", 11212, "Port the server listens on")
 	i := flag.Int("items", 65535, "Maximum number of items to cache")
 	flag.Parse()
 
-	s, err := NewServer(*p, *i)
+	s, err := NewServer(*a, *p, *i)
 	if err != nil {
 		fmt.Println("failed to create server: ", err)
 		return
