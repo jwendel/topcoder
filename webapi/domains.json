@@ -1,0 +1,52 @@
+[
+    {
+        "domain": "topcoder.com",
+        "users": [
+            {
+                "username": "takumi",
+                "password": "ilovego"
+            },
+            {
+                "username": "teru",
+                "password": "ilovejava"
+            },
+            {
+                "username": "toshi",
+                "password": "iloveapex"
+            }
+        ],
+        "clients": [
+            {
+                "client_id": "s6BhdRkqt3",
+                "client_secret": "7Fjfp0ZBr1KtDRbnfVdmIw"
+            },
+            {
+                "client_id": "ZjcxOTc2ZT",
+                "client_secret": "NjYyMWQxNjUtNWEzYy00ZW"
+            }
+        ]
+    },
+    {
+        "domain": "appirio.com",
+        "users": [
+            {
+                "username": "jun",
+                "password": "ilovetopcoder"
+            },
+            {
+                "username": "narinder",
+                "password": "ilovesamurai"
+            },
+            {
+                "username": "chris",
+                "password": "ilovesushi"
+            }
+        ],
+        "clients": [
+            {
+                "client_id": "MDYyMDI4OD",
+                "client_secret": "NzU1MTQyZWUtYzJhZC00OT"
+            }
+        ]
+    }
+]
