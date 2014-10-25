@@ -43,8 +43,8 @@ type userJson struct {
 
 // client TODO
 type clientJson struct {
-	id     string `json:"client_id"`
-	secret string `json:"client_secret"`
+	Id     string `json:"client_id"`
+	Secret string `json:"client_secret"`
 }
 
 // Init loads the passed in json file, unmarshels the data,
@@ -140,11 +140,11 @@ func (ds *datastore) unmarshal(bytes []byte) error {
 
 			domain.Clients = make(map[string]string)
 			for _, u := range d.Clients {
-				_, ok := domain.Clients[u.id]
+				_, ok := domain.Clients[u.Id]
 				if !ok {
-					domain.Clients[u.id] = u.secret
+					domain.Clients[u.Id] = u.Secret
 				} else {
-					return fmt.Errorf("duplicate client_id '%v' for domain '%v'", u.id, d.Name)
+					return fmt.Errorf("duplicate client_id '%v' for domain '%v'", u.Id, d.Name)
 				}
 			}
 

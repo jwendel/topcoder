@@ -31,7 +31,7 @@ func init() {
 
 // Serve creates a webapi and starts the http server
 // Will listen and block unless something goes wrong
-func Serve(listenAddr, jsonFilename string) error {
+func Serve(listenAddr, jsonFilename string, tokenTimeout int) error {
 	wa, err := NewWebAPI(jsonFilename)
 	if err != nil {
 		return err
@@ -108,23 +108,6 @@ func (wa *webapi) proxyAuthHandler(w http.ResponseWriter, r *http.Request) {
 	_, err = w.Write(js)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-}
-
-// accessTokenHandler TODO
-func (wa *webapi) accessTokenHandler(w http.ResponseWriter, r *http.Request) {
-	matches := tokenRegex.FindStringSubmatch(r.URL.Path)
-	if len(matches) != 2 {
-		notFoundHandler(w, r)
-		return
-	}
-
-	// matches[1] is the domain to lookup
-	domain := matches[1]
-	ok := wa.store.DomainExists(domain)
-	if !ok {
-		notFoundHandler(w, r)
 		return
 	}
 }
