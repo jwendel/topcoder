@@ -17,62 +17,76 @@ type datastore struct {
 	mutex    sync.RWMutex
 	filename string
 	fileinfo os.FileInfo
-	// map[DomainName]map[UserName]EncryptedPassword
-	domainMap map[string]map[string]string
+	// map[DomainName]
+	domainMap map[string]Domain
+}
+
+type Domain struct {
+	// map[username]HashedPassword
+	Users map[string]string
+	// map[client_id]client_secret
+	Clients map[string]string
 }
 
 // domain structure to read domains from JSON input file
-type domain struct {
-	Domain string `json:"domain"`
-	Users  []user `json:"users"`
+type domainJson struct {
+	Name    string       `json:"domain"`
+	Users   []userJson   `json:"users"`
+	Clients []clientJson `json:"clients"`
 }
 
 // user structure to read users from JSON input file
-type user struct {
+type userJson struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
 }
 
+// client TODO
+type clientJson struct {
+	id     string `json:"client_id"`
+	secret string `json:"client_secret"`
+}
+
 // Init loads the passed in json file, unmarshels the data,
 // and starts a fileWatcher to look for changes to the file
-func (s *datastore) Init(filename string) error {
-	s.filename = filename
+func (ds *datastore) Init(filename string) error {
+	ds.filename = filename
 
-	b, err := s.loadFile()
+	b, err := ds.loadFile()
 	if err != nil {
 		return err
 	}
-	err = s.unmarshal(b)
+	err = ds.unmarshal(b)
 	if err != nil {
 		return err
 	}
-	s.fileinfo, err = os.Stat(s.filename)
+	ds.fileinfo, err = os.Stat(ds.filename)
 	if err != nil {
 		return err
 	}
-	go s.fileWatcher()
+	go ds.fileWatcher()
 	return nil
 }
 
 // DomainExists checks if the given domain exists in the data store.
-func (s *datastore) DomainExists(domain string) bool {
-	s.mutex.RLock()
-	defer s.mutex.RUnlock()
-	_, ok := s.domainMap[domain]
+func (ds *datastore) DomainExists(domain string) bool {
+	ds.mutex.RLock()
+	defer ds.mutex.RUnlock()
+	_, ok := ds.domainMap[domain]
 	return ok
 }
 
 // UserPasswordValid returns true when the password is valid for a given domain/user
 // else it just returns false.  Password is expected to be in encrypted form.
-func (s *datastore) UserPasswordValid(domain, username, password string) bool {
-	s.mutex.RLock()
-	defer s.mutex.RUnlock()
+func (ds *datastore) UserPasswordValid(domain, username, password string) bool {
+	ds.mutex.RLock()
+	defer ds.mutex.RUnlock()
 
-	d, ok := s.domainMap[domain]
+	d, ok := ds.domainMap[domain]
 	if !ok {
 		return false
 	}
-	pass, ok := d[username]
+	pass, ok := d.Users[username]
 	if !ok {
 		return false
 	}
@@ -84,9 +98,9 @@ func (s *datastore) UserPasswordValid(domain, username, password string) bool {
 }
 
 // loadfile loads the full file from disk
-func (s *datastore) loadFile() ([]byte, error) {
+func (ds *datastore) loadFile() ([]byte, error) {
 	// Load the data source from disk
-	b, err := ioutil.ReadFile(s.filename)
+	b, err := ioutil.ReadFile(ds.filename)
 	if err != nil {
 		return nil, err
 	}
@@ -95,68 +109,81 @@ func (s *datastore) loadFile() ([]byte, error) {
 
 // unmarshal converts bytes to a JSON structure then populates the
 // datastore.dataMap with the results.
-func (s *datastore) unmarshal(bytes []byte) error {
+func (ds *datastore) unmarshal(bytes []byte) error {
 	// Updating the user database, write lock needed
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
+	ds.mutex.Lock()
+	defer ds.mutex.Unlock()
 
-	var domains []domain
+	var domains []domainJson
 	err := json.Unmarshal(bytes, &domains)
 	if err != nil {
 		return err
 	}
 
-	domainMap := make(map[string]map[string]string)
+	domainMap := make(map[string]Domain)
 
 	// Loop over all domains and users, inserting them into the domainMap
 	// The user password will be encrypted with this step
 	for _, d := range domains {
-		_, ok := domainMap[d.Domain]
+		_, ok := domainMap[d.Name]
 		if !ok {
-			userMap := make(map[string]string)
+			var domain Domain
+			domain.Users = make(map[string]string)
 			for _, u := range d.Users {
-				_, ok := userMap[u.Username]
+				_, ok := domain.Users[u.Username]
 				if !ok {
-					userMap[u.Username] = EncryptPassword(u.Password)
+					domain.Users[u.Username] = EncryptPassword(u.Password)
 				} else {
-					return fmt.Errorf("duplicate username '%v' for domain '%v'", u.Username, d.Domain)
+					return fmt.Errorf("duplicate username '%v' for domain '%v'", u.Username, d.Name)
 				}
 			}
-			domainMap[d.Domain] = userMap
+
+			domain.Clients = make(map[string]string)
+			for _, u := range d.Clients {
+				_, ok := domain.Clients[u.id]
+				if !ok {
+					domain.Clients[u.id] = u.secret
+				} else {
+					return fmt.Errorf("duplicate client_id '%v' for domain '%v'", u.id, d.Name)
+				}
+			}
+
+			domainMap[d.Name] = domain
+
 		} else {
-			return fmt.Errorf("duplicate domains '%v' in input file", d.Domain)
+			return fmt.Errorf("duplicate domain '%v' in input file", d.Name)
 		}
 	}
 
-	s.domainMap = domainMap
+	ds.domainMap = domainMap
 
 	return nil
 }
 
 // fileWatcher checks once every 3 seconds if the source json file has changed
 // based on it's timestamp.  If it chagnes it will reload the user data.
-func (s *datastore) fileWatcher() {
+func (ds *datastore) fileWatcher() {
 	for {
 		time.Sleep(3 * time.Second)
-		fi, err := os.Stat(s.filename)
+		fi, err := os.Stat(ds.filename)
 		if err != nil {
-			fmt.Printf("Failed watching file '%v' for updates\n", s.filename)
+			fmt.Printf("Failed watching file '%v' for updates\n", ds.filename)
 			return
 		}
 
-		if !fi.ModTime().Equal(s.fileinfo.ModTime()) {
+		if !fi.ModTime().Equal(ds.fileinfo.ModTime()) {
 			// file modified time changed, reload data
-			b, err := s.loadFile()
+			b, err := ds.loadFile()
 			if err != nil {
-				fmt.Printf("Error loading file '%v': %v", s.filename, err)
+				fmt.Printf("Error loading file '%v': %v", ds.filename, err)
 				return
 			}
-			err = s.unmarshal(b)
+			err = ds.unmarshal(b)
 			if err != nil {
-				fmt.Printf("Error unmarshling '%v': %v", s.filename, err)
+				fmt.Printf("Error unmarshling '%v': %v", ds.filename, err)
 				return
 			}
-			s.fileinfo = fi
+			ds.fileinfo = fi
 		}
 	}
 }

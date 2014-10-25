@@ -61,25 +61,22 @@ func NewWebAPI(jsonFilename string) (*webapi, error) {
 // domainRouter determines if this is a proxyAuth or access_token request
 // and routes to those handlers.  Else it returns a 404 error.
 func (wa *webapi) domainRouter(w http.ResponseWriter, r *http.Request) {
-	if proxyAuthRegex.Match(r.URL.Path) {
+	if r.Method != "POST" {
+		notFoundHandler(w, r)
+	} else if proxyAuthRegex.MatchString(r.URL.Path) {
 		wa.proxyAuthHandler(w, r)
-	} else if tokenRegex.Match(r.URL.Path) {
+	} else if tokenRegex.MatchString(r.URL.Path) {
 		wa.accessTokenHandler(w, r)
 	} else {
 		notFoundHandler(w, r)
 	}
 }
 
-// domainAuth handles domain authentiation based on data in store
-func (wa *webapi) domainAuth(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "POST" {
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-
-	matches := wa.domainRegex.FindStringSubmatch(r.URL.Path)
-	if matches == nil || len(matches) != 2 {
-		w.WriteHeader(http.StatusNotFound)
+// proxyAuthHandler handles domain authentiation based on data in store
+func (wa *webapi) proxyAuthHandler(w http.ResponseWriter, r *http.Request) {
+	matches := proxyAuthRegex.FindStringSubmatch(r.URL.Path)
+	if len(matches) != 2 {
+		notFoundHandler(w, r)
 		return
 	}
 
@@ -87,7 +84,7 @@ func (wa *webapi) domainAuth(w http.ResponseWriter, r *http.Request) {
 	domain := matches[1]
 	ok := wa.store.DomainExists(domain)
 	if !ok {
-		w.WriteHeader(http.StatusNotFound)
+		notFoundHandler(w, r)
 		return
 	}
 
@@ -111,6 +108,23 @@ func (wa *webapi) domainAuth(w http.ResponseWriter, r *http.Request) {
 	_, err = w.Write(js)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+}
+
+// accessTokenHandler TODO
+func (wa *webapi) accessTokenHandler(w http.ResponseWriter, r *http.Request) {
+	matches := tokenRegex.FindStringSubmatch(r.URL.Path)
+	if len(matches) != 2 {
+		notFoundHandler(w, r)
+		return
+	}
+
+	// matches[1] is the domain to lookup
+	domain := matches[1]
+	ok := wa.store.DomainExists(domain)
+	if !ok {
+		notFoundHandler(w, r)
 		return
 	}
 }
