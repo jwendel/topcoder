@@ -15,6 +15,7 @@ import (
 	"time"
 )
 
+// tokenData is used to issue an access_token request and represents result data
 type tokenData struct {
 	url        string
 	id         string
@@ -26,6 +27,7 @@ type tokenData struct {
 	bodyJson    map[string]interface{}
 }
 
+// proxyData is used to issuth a proxyauth request and represents result data
 type proxyData struct {
 	url        string
 	authHeader string
@@ -37,6 +39,7 @@ type proxyData struct {
 	bodyJson    map[string]interface{}
 }
 
+// TestOath runs the 9 test cases outlined in the challenge
 func TestOath(t *testing.T) {
 	wa, err := NewWebAPI("test_data.json", 3600)
 	if err != nil {
@@ -154,6 +157,7 @@ func TestOath(t *testing.T) {
 
 }
 
+// runAccessToken crafts a access_token request, sends it and validates the result
 func runAccessToken(t *testing.T, td tokenData) map[string]interface{} {
 	pf := url.Values{}
 	pf.Add("client_id", td.id)
@@ -186,6 +190,7 @@ func runAccessToken(t *testing.T, td tokenData) map[string]interface{} {
 	return m
 }
 
+// runProxyAuth crafts a proxyauth request, sends it and validates the result
 func runProxyAuth(t *testing.T, pd proxyData) map[string]interface{} {
 	pf := url.Values{}
 	pf.Add("username", pd.user)
@@ -225,6 +230,9 @@ func runProxyAuth(t *testing.T, pd proxyData) map[string]interface{} {
 	return m
 }
 
+// checkJsonBody will validate data returned in the body of a request.
+// It unmarshels JSON data into a map, and compares it to the bodyJson
+// passed in.  It returns the results from the body as a map.
 func checkJsonBody(t *testing.T, bytes []byte, bodyJson map[string]interface{}) map[string]interface{} {
 	var m map[string]interface{}
 	var f interface{}
