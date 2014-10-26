@@ -18,9 +18,9 @@ type datastore struct {
 	authFilename  string
 	authFileinfo  os.FileInfo
 	tokenFilename string
-	// map[DomainName]
-	domainMap DomainAuths
-	tokenMap  DomainTokens
+	tokenTimeout  int
+	domainMap     DomainAuths
+	tokenMap      DomainTokens
 }
 
 // DomainAuths is map[domainName]Domain.  Maps a domain name to data
@@ -60,7 +60,7 @@ func (ds *datastore) Init(authFile, tokenFile string) error {
 	ds.authFilename = authFile
 	ds.tokenFilename = tokenFile
 
-	b, err := ds.loadAuthFile()
+	b, err := ds.loadFile(ds.authFilename)
 	if err != nil {
 		return err
 	}
@@ -72,6 +72,11 @@ func (ds *datastore) Init(authFile, tokenFile string) error {
 	if err != nil {
 		return err
 	}
+
+	if len(tokenFile) > 0 {
+		ds.loadTokens()
+	}
+
 	go ds.fileWatcher()
 	go ds.startSigHandler()
 	return nil
@@ -106,10 +111,10 @@ func (ds *datastore) UserPasswordValid(domain, username, password string) bool {
 	return false
 }
 
-// loadAuthFile loads the full file from disk
-func (ds *datastore) loadAuthFile() ([]byte, error) {
+// loadFile loads the full file from disk
+func (ds *datastore) loadFile(f string) ([]byte, error) {
 	// Load the data source from disk
-	b, err := ioutil.ReadFile(ds.authFilename)
+	b, err := ioutil.ReadFile(f)
 	if err != nil {
 		return nil, err
 	}
@@ -185,7 +190,7 @@ func (ds *datastore) fileWatcher() {
 
 		if !fi.ModTime().Equal(ds.authFileinfo.ModTime()) {
 			// file modified time changed, reload data
-			b, err := ds.loadAuthFile()
+			b, err := ds.loadFile(ds.authFilename)
 			if err != nil {
 				fmt.Printf("Error loading file '%v': %v", ds.authFilename, err)
 				return

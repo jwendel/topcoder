@@ -12,7 +12,7 @@ import (
 	"net/url"
 	"strings"
 	"testing"
-	"time"
+	// "time"
 )
 
 // tokenData is used to issue an access_token request and represents result data
@@ -41,7 +41,7 @@ type proxyData struct {
 
 // TestOath runs the 9 test cases outlined in the challenge
 func TestOath(t *testing.T) {
-	wa, err := NewWebAPI("test_data.json", "", 3600)
+	wa, err := NewWebAPI("test_data.json", "test_tokens.json", 3600)
 	if err != nil {
 		t.Fatal("Failed to create Webapi: ", err)
 	}
@@ -135,24 +135,10 @@ func TestOath(t *testing.T) {
 	// Case 9 Failure
 	// Call proxyauth endpoint with an expired access token
 	// Failure with status code 400
-	wa2, err := NewWebAPI("test_data.json", "", 1)
-	if err != nil {
-		t.Fatal("Failed to create Webapi: ", err)
-	}
-	ts2 := httptest.NewServer(wa2.Mux)
-	defer ts2.Close()
 
-	appTokenURL = ts2.URL + "/api/2/domains/appirio.com/oauth/access_token"
-	appProxyURL = ts2.URL + "/api/2/domains/appirio.com/proxyauth"
-
-	bodyJSON = map[string]interface{}{"token_type": "bearer", "expires_in": float64(1), "access_token": nil}
-	td = tokenData{appTokenURL, "MDYyMDI4OD", "NzU1MTQyZWUtYzJhZC00OT", "client_credentials", 200, "application/json", bodyJSON}
-	m = runAccessToken(t, td)
-	at = "Bearer " + m["access_token"].(string)
-
-	time.Sleep(2 * time.Second)
+	// Use expired token loaded from file
 	bodyJSON = map[string]interface{}{"error": "access_token_expired"}
-	pd = proxyData{appProxyURL, at, "jun", "{SHA256}/Hnfw7FSM40NiUQ8cY2OFKV8ZnXWAvF3U7/lMKDwmso=", 400, "application/json", bodyJSON}
+	pd = proxyData{appProxyURL, "Bearer ZjU5NzU3NjYtYzRmZS00NzA3LTlhZGItZmQ0MWM0ZDY5MWM1", "jun", "{SHA256}/Hnfw7FSM40NiUQ8cY2OFKV8ZnXWAvF3U7/lMKDwmso=", 400, "application/json", bodyJSON}
 	runProxyAuth(t, pd)
 
 }

@@ -74,6 +74,26 @@ func (ds *datastore) SaveTokens() error {
 	return nil
 }
 
+func (ds *datastore) loadTokens() error {
+	b, err := ds.loadFile(ds.tokenFilename)
+	if err != nil {
+		return err
+	}
+
+	var d DomainTokens
+	err = json.Unmarshal(b, &d)
+	if err != nil {
+		return err
+	}
+
+	ds.mutex.Lock()
+	defer ds.mutex.Unlock()
+
+	ds.tokenMap = d
+
+	return nil
+}
+
 // accessTokenHandler TODO
 func (wa *Webapi) accessTokenHandler(w http.ResponseWriter, r *http.Request) {
 	matches := tokenRegex.FindStringSubmatch(r.URL.Path)
@@ -102,8 +122,8 @@ func (wa *Webapi) accessTokenHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// access_token request is valid, generate token
-	token := wa.generateAccessToken(domain)
-	t := tokenResponse{token, "bearer", wa.tokenTimeout}
+	token := wa.store.generateAccessToken(domain)
+	t := tokenResponse{token, "bearer", wa.store.tokenTimeout}
 	b, err := json.Marshal(t)
 	if err != nil {
 		internalErrorHandler(w, r)
@@ -134,12 +154,15 @@ func (wa *Webapi) ValidateClient(domain, id, secret, grant string) error {
 	return nil
 }
 
-func (wa *Webapi) generateAccessToken(domain string) string {
+func (ds *datastore) generateAccessToken(domain string) string {
 	u := uuid.New()
 	accessToken := base64.StdEncoding.EncodeToString([]byte(u))
 
-	t := time.Now().Add(time.Duration(wa.tokenTimeout) * time.Second)
-	wa.store.tokenMap[domain][accessToken] = t
+	t := time.Now().Add(time.Duration(ds.tokenTimeout) * time.Second)
+
+	ds.mutex.Lock()
+	defer ds.mutex.Unlock()
+	ds.tokenMap[domain][accessToken] = t
 	return accessToken
 }
 

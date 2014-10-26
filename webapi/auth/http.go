@@ -18,14 +18,17 @@ var (
 // Webapi represents the auth http server and the data
 // needed to serve requests.
 type Webapi struct {
-	Mux          *http.ServeMux
-	store        datastore
-	tokenTimeout int
+	Mux   *http.ServeMux
+	store datastore
 }
 
 type response struct {
 	AccessGranted bool   `json:"access_granted"`
 	Reason        string `json:"reason,omitempty"`
+}
+
+type errorJSON struct {
+	Error string `json:"error"`
 }
 
 func init() {
@@ -48,13 +51,14 @@ func Serve(listenAddr, jsonFilename, tokenFilename string, tokenTimeout int) err
 // Attach the Mux to a http.Serve to start the listener
 func NewWebAPI(jsonFilename, tokenFilename string, tokenTimeout int) (*Webapi, error) {
 	var store datastore
+	store.tokenTimeout = tokenTimeout
 	err := store.Init(jsonFilename, tokenFilename)
 	if err != nil {
 		return nil, err
 	}
 
 	mux := http.NewServeMux()
-	wa := Webapi{mux, store, tokenTimeout}
+	wa := Webapi{mux, store}
 
 	wa.Mux.HandleFunc("/api/2/domains/", wa.domainRouter)
 	wa.Mux.HandleFunc("/", notFoundHandler)
@@ -122,6 +126,7 @@ func (wa *Webapi) proxyAuthHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// successHandler returns status 200 with the body populated with response.
 func successHandler(w http.ResponseWriter, r *http.Request, response []byte) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
@@ -138,10 +143,8 @@ func notFoundHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotFound)
 }
 
-type errorJSON struct {
-	Error string `json:"error"`
-}
-
+// badRequestHandler returns error 400 with json body with 1 field of "error", with
+// a value of errStatus
 func badRequestHandler(w http.ResponseWriter, r *http.Request, errStatus string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusBadRequest)
@@ -162,6 +165,7 @@ func badRequestHandler(w http.ResponseWriter, r *http.Request, errStatus string)
 	}
 }
 
+// internalErrorHandler returns an error 500
 func internalErrorHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusInternalServerError)
