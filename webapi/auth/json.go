@@ -14,16 +14,20 @@ import (
 )
 
 type datastore struct {
-	mutex    sync.RWMutex
-	filename string
-	fileinfo os.FileInfo
+	mutex         sync.RWMutex
+	authFilename  string
+	authFileinfo  os.FileInfo
+	tokenFilename string
 	// map[DomainName]
 	domainMap DomainAuths
 	tokenMap  DomainTokens
 }
 
+// DomainAuths is map[domainName]Domain.  Maps a domain name to data
+// about that domain
 type DomainAuths map[string]Domain
 
+// Domain data for proxyauth and oauth lookup
 type Domain struct {
 	// map[username]HashedPassword
 	Users map[string]string
@@ -31,31 +35,32 @@ type Domain struct {
 	Clients map[string]string
 }
 
-// domain structure to read domains from JSON input file
-type domainJson struct {
+// domainJSON structure to read domains from JSON input file
+type domainJSON struct {
 	Name    string       `json:"domain"`
-	Users   []userJson   `json:"users"`
-	Clients []clientJson `json:"clients"`
+	Users   []userJSON   `json:"users"`
+	Clients []clientJSON `json:"clients"`
 }
 
 // user structure to read users from JSON input file
-type userJson struct {
+type userJSON struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
 }
 
 // client TODO
-type clientJson struct {
-	Id     string `json:"client_id"`
+type clientJSON struct {
+	ID     string `json:"client_id"`
 	Secret string `json:"client_secret"`
 }
 
 // Init loads the passed in json file, unmarshels the data,
 // and starts a fileWatcher to look for changes to the file
-func (ds *datastore) Init(filename string) error {
-	ds.filename = filename
+func (ds *datastore) Init(authFile, tokenFile string) error {
+	ds.authFilename = authFile
+	ds.tokenFilename = tokenFile
 
-	b, err := ds.loadFile()
+	b, err := ds.loadAuthFile()
 	if err != nil {
 		return err
 	}
@@ -63,11 +68,12 @@ func (ds *datastore) Init(filename string) error {
 	if err != nil {
 		return err
 	}
-	ds.fileinfo, err = os.Stat(ds.filename)
+	ds.authFileinfo, err = os.Stat(ds.authFilename)
 	if err != nil {
 		return err
 	}
 	go ds.fileWatcher()
+	go ds.startSigHandler()
 	return nil
 }
 
@@ -100,10 +106,10 @@ func (ds *datastore) UserPasswordValid(domain, username, password string) bool {
 	return false
 }
 
-// loadfile loads the full file from disk
-func (ds *datastore) loadFile() ([]byte, error) {
+// loadAuthFile loads the full file from disk
+func (ds *datastore) loadAuthFile() ([]byte, error) {
 	// Load the data source from disk
-	b, err := ioutil.ReadFile(ds.filename)
+	b, err := ioutil.ReadFile(ds.authFilename)
 	if err != nil {
 		return nil, err
 	}
@@ -117,7 +123,7 @@ func (ds *datastore) unmarshal(bytes []byte) error {
 	ds.mutex.Lock()
 	defer ds.mutex.Unlock()
 
-	var domains []domainJson
+	var domains []domainJSON
 	err := json.Unmarshal(bytes, &domains)
 	if err != nil {
 		return err
@@ -144,11 +150,11 @@ func (ds *datastore) unmarshal(bytes []byte) error {
 
 			domain.Clients = make(map[string]string)
 			for _, u := range d.Clients {
-				_, ok := domain.Clients[u.Id]
+				_, ok := domain.Clients[u.ID]
 				if !ok {
-					domain.Clients[u.Id] = u.Secret
+					domain.Clients[u.ID] = u.Secret
 				} else {
-					return fmt.Errorf("duplicate client_id '%v' for domain '%v'", u.Id, d.Name)
+					return fmt.Errorf("duplicate client_id '%v' for domain '%v'", u.ID, d.Name)
 				}
 			}
 
@@ -171,25 +177,25 @@ func (ds *datastore) unmarshal(bytes []byte) error {
 func (ds *datastore) fileWatcher() {
 	for {
 		time.Sleep(3 * time.Second)
-		fi, err := os.Stat(ds.filename)
+		fi, err := os.Stat(ds.authFilename)
 		if err != nil {
-			fmt.Printf("Failed watching file '%v' for updates\n", ds.filename)
+			fmt.Printf("Failed watching file '%v' for updates\n", ds.authFilename)
 			return
 		}
 
-		if !fi.ModTime().Equal(ds.fileinfo.ModTime()) {
+		if !fi.ModTime().Equal(ds.authFileinfo.ModTime()) {
 			// file modified time changed, reload data
-			b, err := ds.loadFile()
+			b, err := ds.loadAuthFile()
 			if err != nil {
-				fmt.Printf("Error loading file '%v': %v", ds.filename, err)
+				fmt.Printf("Error loading file '%v': %v", ds.authFilename, err)
 				return
 			}
 			err = ds.unmarshal(b)
 			if err != nil {
-				fmt.Printf("Error unmarshling '%v': %v", ds.filename, err)
+				fmt.Printf("Error unmarshling '%v': %v", ds.authFilename, err)
 				return
 			}
-			ds.fileinfo = fi
+			ds.authFileinfo = fi
 		}
 	}
 }

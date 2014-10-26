@@ -13,9 +13,9 @@ import (
 )
 
 func TestHttp(t *testing.T) {
-	wa, err := NewWebAPI("test_data.json", 3600)
+	wa, err := NewWebAPI("test_data.json", "", 3600)
 	if err != nil {
-		t.Fatal("Failed to create webapi: ", err)
+		t.Fatal("Failed to create Webapi: ", err)
 	}
 
 	ts := httptest.NewServer(wa.Mux)
@@ -47,9 +47,9 @@ func TestHttp(t *testing.T) {
 }
 
 func TestHttpExtra(t *testing.T) {
-	wa, err := NewWebAPI("test_data.json", 3600)
+	wa, err := NewWebAPI("test_data.json", "", 3600)
 	if err != nil {
-		t.Fatal("Failed to create webapi: ", err)
+		t.Fatal("Failed to create Webapi: ", err)
 	}
 
 	ts := httptest.NewServer(wa.Mux)

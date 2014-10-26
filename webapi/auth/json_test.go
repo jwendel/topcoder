@@ -10,7 +10,7 @@ import (
 
 func TestDomainExists(t *testing.T) {
 	s := datastore{}
-	s.Init("test_data.json")
+	s.Init("test_data.json", "")
 
 	if ok := s.DomainExists("topcoder.com"); !ok {
 		t.Errorf("DomainExists('topcoder.com') = %v, wanted true", ok)
@@ -31,7 +31,7 @@ func TestDomainExists(t *testing.T) {
 
 func TestUserPasswordValid(t *testing.T) {
 	s := datastore{}
-	s.Init("test_data.json")
+	s.Init("test_data.json", "")
 
 	if ok := s.UserPasswordValid("topcoder.com", "teru", EncryptPassword("ilovejava")); !ok {
 		t.Errorf("UserPasswordValid(topcoder.com, teru, ilovejava) = %v, wanted true", ok)

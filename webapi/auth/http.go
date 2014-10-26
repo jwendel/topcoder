@@ -1,6 +1,7 @@
 // Copyright (c) 2014 James Wendel. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
+
 package auth
 
 import (
@@ -14,7 +15,9 @@ var (
 	tokenRegex     *regexp.Regexp
 )
 
-type webapi struct {
+// Webapi represents the auth http server and the data
+// needed to serve requests.
+type Webapi struct {
 	Mux          *http.ServeMux
 	store        datastore
 	tokenTimeout int
@@ -30,10 +33,10 @@ func init() {
 	tokenRegex = regexp.MustCompile("^/api/2/domains/(.+)/oauth/access_token$")
 }
 
-// Serve creates a webapi and starts the http server
+// Serve creates a Webapi and starts the http server
 // Will listen and block unless something goes wrong
-func Serve(listenAddr, jsonFilename string, tokenTimeout int) error {
-	wa, err := NewWebAPI(jsonFilename, tokenTimeout)
+func Serve(listenAddr, jsonFilename, tokenFilename string, tokenTimeout int) error {
+	wa, err := NewWebAPI(jsonFilename, tokenFilename, tokenTimeout)
 	if err != nil {
 		return err
 	}
@@ -41,17 +44,17 @@ func Serve(listenAddr, jsonFilename string, tokenTimeout int) error {
 	return http.ListenAndServe(listenAddr, wa.Mux)
 }
 
-// NewWebAPI creates a webapi and initialized all fields
+// NewWebAPI creates a Webapi and initialized all fields
 // Attach the Mux to a http.Serve to start the listener
-func NewWebAPI(jsonFilename string, tokenTimeout int) (*webapi, error) {
+func NewWebAPI(jsonFilename, tokenFilename string, tokenTimeout int) (*Webapi, error) {
 	var store datastore
-	err := store.Init(jsonFilename)
+	err := store.Init(jsonFilename, tokenFilename)
 	if err != nil {
 		return nil, err
 	}
 
 	mux := http.NewServeMux()
-	wa := webapi{mux, store, tokenTimeout}
+	wa := Webapi{mux, store, tokenTimeout}
 
 	wa.Mux.HandleFunc("/api/2/domains/", wa.domainRouter)
 	wa.Mux.HandleFunc("/", notFoundHandler)
@@ -61,7 +64,7 @@ func NewWebAPI(jsonFilename string, tokenTimeout int) (*webapi, error) {
 
 // domainRouter determines if this is a proxyAuth or access_token request
 // and routes to those handlers.  Else it returns a 404 error.
-func (wa *webapi) domainRouter(w http.ResponseWriter, r *http.Request) {
+func (wa *Webapi) domainRouter(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		notFoundHandler(w, r)
 	} else if proxyAuthRegex.MatchString(r.URL.Path) {
@@ -74,7 +77,7 @@ func (wa *webapi) domainRouter(w http.ResponseWriter, r *http.Request) {
 }
 
 // proxyAuthHandler handles domain authentiation based on data in store
-func (wa *webapi) proxyAuthHandler(w http.ResponseWriter, r *http.Request) {
+func (wa *Webapi) proxyAuthHandler(w http.ResponseWriter, r *http.Request) {
 	matches := proxyAuthRegex.FindStringSubmatch(r.URL.Path)
 	if len(matches) != 2 {
 		notFoundHandler(w, r)
@@ -135,7 +138,7 @@ func notFoundHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotFound)
 }
 
-type errorJson struct {
+type errorJSON struct {
 	Error string `json:"error"`
 }
 
@@ -144,7 +147,7 @@ func badRequestHandler(w http.ResponseWriter, r *http.Request, errStatus string)
 	w.WriteHeader(http.StatusBadRequest)
 
 	if len(errStatus) > 0 {
-		e := errorJson{errStatus}
+		e := errorJSON{errStatus}
 		js, err := json.Marshal(e)
 		if err != nil {
 			internalErrorHandler(w, r)
