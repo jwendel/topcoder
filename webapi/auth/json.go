@@ -18,8 +18,11 @@ type datastore struct {
 	filename string
 	fileinfo os.FileInfo
 	// map[DomainName]
-	domainMap map[string]Domain
+	domainMap DomainAuths
+	tokenMap  DomainTokens
 }
+
+type DomainAuths map[string]Domain
 
 type Domain struct {
 	// map[username]HashedPassword
@@ -121,6 +124,7 @@ func (ds *datastore) unmarshal(bytes []byte) error {
 	}
 
 	domainMap := make(map[string]Domain)
+	tokenMap := make(map[string]Tokens)
 
 	// Loop over all domains and users, inserting them into the domainMap
 	// The user password will be encrypted with this step
@@ -149,6 +153,7 @@ func (ds *datastore) unmarshal(bytes []byte) error {
 			}
 
 			domainMap[d.Name] = domain
+			tokenMap[d.Name] = make(map[string]time.Time)
 
 		} else {
 			return fmt.Errorf("duplicate domain '%v' in input file", d.Name)
@@ -156,6 +161,7 @@ func (ds *datastore) unmarshal(bytes []byte) error {
 	}
 
 	ds.domainMap = domainMap
+	ds.tokenMap = tokenMap
 
 	return nil
 }

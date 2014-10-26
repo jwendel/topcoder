@@ -15,8 +15,9 @@ var (
 )
 
 type webapi struct {
-	Mux   *http.ServeMux
-	store datastore
+	Mux          *http.ServeMux
+	store        datastore
+	tokenTimeout int
 }
 
 type response struct {
@@ -32,7 +33,7 @@ func init() {
 // Serve creates a webapi and starts the http server
 // Will listen and block unless something goes wrong
 func Serve(listenAddr, jsonFilename string, tokenTimeout int) error {
-	wa, err := NewWebAPI(jsonFilename)
+	wa, err := NewWebAPI(jsonFilename, tokenTimeout)
 	if err != nil {
 		return err
 	}
@@ -42,7 +43,7 @@ func Serve(listenAddr, jsonFilename string, tokenTimeout int) error {
 
 // NewWebAPI creates a webapi and initialized all fields
 // Attach the Mux to a http.Serve to start the listener
-func NewWebAPI(jsonFilename string) (*webapi, error) {
+func NewWebAPI(jsonFilename string, tokenTimeout int) (*webapi, error) {
 	var store datastore
 	err := store.Init(jsonFilename)
 	if err != nil {
@@ -50,7 +51,7 @@ func NewWebAPI(jsonFilename string) (*webapi, error) {
 	}
 
 	mux := http.NewServeMux()
-	wa := webapi{mux, store}
+	wa := webapi{mux, store, tokenTimeout}
 
 	wa.Mux.HandleFunc("/api/2/domains/", wa.domainRouter)
 	wa.Mux.HandleFunc("/", notFoundHandler)
@@ -88,6 +89,12 @@ func (wa *webapi) proxyAuthHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	err := wa.ValidateAuthHeader(w, r, domain)
+	if err != nil {
+		badRequestHandler(w, r, err.Error())
+		return
+	}
+
 	r.ParseForm()
 	username := r.Form.Get("username")
 	password := r.Form.Get("password")
@@ -100,14 +107,24 @@ func (wa *webapi) proxyAuthHandler(w http.ResponseWriter, r *http.Request) {
 
 	js, err := json.Marshal(res)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		internalErrorHandler(w, r)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	_, err = w.Write(js)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		internalErrorHandler(w, r)
+		return
+	}
+}
+
+func successHandler(w http.ResponseWriter, r *http.Request, response []byte) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_, err := w.Write(response)
+	if err != nil {
+		internalErrorHandler(w, r)
 		return
 	}
 }
@@ -116,4 +133,33 @@ func (wa *webapi) proxyAuthHandler(w http.ResponseWriter, r *http.Request) {
 func notFoundHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusNotFound)
+}
+
+type errorJson struct {
+	Error string `json:"error"`
+}
+
+func badRequestHandler(w http.ResponseWriter, r *http.Request, errStatus string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusBadRequest)
+
+	if len(errStatus) > 0 {
+		e := errorJson{errStatus}
+		js, err := json.Marshal(e)
+		if err != nil {
+			internalErrorHandler(w, r)
+			return
+		}
+
+		_, err = w.Write(js)
+		if err != nil {
+			internalErrorHandler(w, r)
+			return
+		}
+	}
+}
+
+func internalErrorHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/plain")
+	w.WriteHeader(http.StatusInternalServerError)
 }

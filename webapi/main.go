@@ -12,7 +12,7 @@ import (
 
 func main() {
 	listen := flag.String("listen", ":8080", "Hostname and address to listen on")
-	source := flag.String("datasource", "users.json", "Filename to load JSON user data from")
+	source := flag.String("datasource", "domains.json", "Filename to load JSON user data from")
 	tokenTimeout := flag.Int("tokenTimeout", 3600, "Lifetime of auth tokens in seconds")
 	flag.Parse()
 
