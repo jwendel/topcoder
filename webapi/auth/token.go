@@ -29,6 +29,8 @@ type tokenResponse struct {
 	Timeout int    `json:"expires_in"`
 }
 
+// ValidateAuthHeader will look at an HTTP request for a given domain and see if the
+// Authorization header is present and valid.  Returns an error if any check fails.
 func (ds *datastore) ValidateAuthHeader(w http.ResponseWriter, r *http.Request, domain string) error {
 	a := r.Header.Get("Authorization")
 	if len(a) == 0 {
@@ -56,6 +58,8 @@ func (ds *datastore) ValidateAuthHeader(w http.ResponseWriter, r *http.Request, 
 	return nil
 }
 
+// SaveTokens will take all access_tokens stored in the server and write them
+// to disk if the tokenFilename is specified.
 func (ds *datastore) SaveTokens() error {
 	ds.mutex.Lock()
 	defer ds.mutex.Unlock()
@@ -74,6 +78,7 @@ func (ds *datastore) SaveTokens() error {
 	return nil
 }
 
+// loadTokens will attempt to load tokens from the given file.
 func (ds *datastore) loadTokens() error {
 	b, err := ds.loadFile(ds.tokenFilename)
 	if err != nil {
@@ -94,7 +99,9 @@ func (ds *datastore) loadTokens() error {
 	return nil
 }
 
-// accessTokenHandler TODO
+// accessTokenHandler is the route for generating access tokens.  It will load the client id
+// and secret from the request, validate it for the domain and return an UUID.
+// An error is written if anything goes wrong.
 func (wa *Webapi) accessTokenHandler(w http.ResponseWriter, r *http.Request) {
 	matches := tokenRegex.FindStringSubmatch(r.URL.Path)
 	if len(matches) != 2 {
@@ -154,6 +161,7 @@ func (wa *Webapi) ValidateClient(domain, id, secret, grant string) error {
 	return nil
 }
 
+// generateAccessToken will generate a new UUID and add it to the tokenMap.
 func (ds *datastore) generateAccessToken(domain string) string {
 	u := uuid.New()
 	accessToken := base64.StdEncoding.EncodeToString([]byte(u))

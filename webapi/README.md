@@ -1,15 +1,16 @@
 About
 ======
-The *auth* package is an implementation of the topcoder challenge: http://www.topcoder.com/challenge-details/30046011/?type=develop
+The *webapi* package is an implementation of the topcoder Oath2 Golang challenge: http://community.topcoder.com/tc?module=ProjectDetail&pj=30046224
 
 Four .go files come with this package
 
-* **main.go** - Contains a simple main for launching the auth service.  Allows for flags/parameters to be passed to specify input file and listening address/port.
+* **main.go** - Contains a simple main for launching the auth service.  Allows for flags/parameters to be passed to specify auth and token input file and listening address/port.
 * **auth/http.go** - Sets up routes and handlers, and does parsing of input and formatting of output.
 * **auth/json.go** - datastore for the application.  Handles loading the users.json file, parsing it, and provides lookup functions to see if a domain or user/password are valid.
+* **auth/token.go** - Handles much of the logic for the Oauth2 generation and authorizing.
 * **auth/util.go** - simple util methods, only contains encryptPassword helper.
 
-Along with the .go files in auth, there are test files for them as well (run with 'go test').  http_test.go contains the tests outlined in the challenge.  There is an test.sh that executes the same test cases with curl but does not validation on the returned data.
+Along with the .go files in auth, there are test files for them as well (run with 'go test').  examples_test.go contains the tests outlined in the challenge.
 
 The default service starts up ":8080", but the port can be specified to example:
 
@@ -17,7 +18,15 @@ The default service starts up ":8080", but the port can be specified to example:
 
 A different data file can be spcified as well, for example:
 
-   `./webapi -listen=":80" -datasource="users2.json"`
+   `./webapi -listen=":80" -datasource="domains2.json"`
+
+```
+Usage of ./webapi:
+  -datasource="domains.json": Filename to load JSON user data from
+  -listen=":8080": Hostname and address to listen on
+  -tokenTimeout=3600: Lifetime of auth tokens in seconds
+  -tokensource="": Filename to save and load access_tokens from. Blank to bypass this feature.
+```
 
 Path
 ----
@@ -26,12 +35,16 @@ The auth package should be installed to:  **$GOPATH/src/topcoder.com/glc/webapi*
 
 Design Notes
 ------------
-For parsing of the domain within the URL passed to the server, I used a simple regex to match it.  If this API was expanded further, it may be better to use a different mux implementation that allows for wildcards in paths.
+I built Oauth changes into the existing auth package as it is they are a bit intertwined.
 
-The datastore (in json.go) has two interesting designs behind it.
+Notes:
 
-* Instead of reading the file on every request we store it in memory.  To handle if the underlying data file changes, a goroutine runs (every 3 seconds) and checks if the modified timestamp on the file has changed.  If it does, it locks the datastore and reloads the source file.
-* The data from the loaded json file is stuck into a map of maps (map[DomainName]map[UserName]HashedPassword).  This makes lookups easy and detecting duplicate entries within the input file.  The downside is that maps are slow for small inputs and also use lots of memory.
+* access_tokens can be optionally saved to disk using the "-tokensource" parameter.  If not specified, nothing is saved to disk.  The server must be killed with Ctrl-C (SIGINT) to save to disk.
+* The test cases should heavily verify the results we get back.
+* The expiration test check uses the loading of access_tokens.
+* http.go domainRouter funciton is an internal router based on the URL.  json.go or token.go will handle the bulk of the request based on the URL
+* http.go has helper functions for more easily writing out status to the client
+
 
 Other
 -----
