@@ -7,6 +7,8 @@ import (
 	"encoding/base64"
 	"fmt"
 	"net/http"
+	"os"
+	"os/signal"
 	"strings"
 	"time"
 )
@@ -21,29 +23,38 @@ type tokenResponse struct {
 	Timeout int    `json:"expires_in"`
 }
 
-func (wa *webapi) ValidateAuthHeader(w http.ResponseWriter, r *http.Request, domain string) error {
+func (ds *datastore) ValidateAuthHeader(w http.ResponseWriter, r *http.Request, domain string) error {
 	a := r.Header.Get("Authorization")
 	if len(a) == 0 {
-		return fmt.Errorf("invalid_request") // TODO
+		return fmt.Errorf("auth_header_missing")
 	}
 
 	s := strings.Fields(a)
 	if len(s) != 2 || s[0] != "Bearer" {
-		return fmt.Errorf("invalid_request") // TODO
+		return fmt.Errorf("auth_header_invalid")
 	}
-
 	token := s[1]
 
-	t, ok := wa.store.tokenMap[domain][token]
+	ds.mutex.RLock()
+	defer ds.mutex.RUnlock()
+
+	t, ok := ds.tokenMap[domain][token]
 	if !ok {
-		return fmt.Errorf("invalid_auth_token") // TODO
+		return fmt.Errorf("auth_token_not_found")
 	}
 
 	if t.Before(time.Now()) {
-		return fmt.Errorf("access_token_expired") // TODO
+		return fmt.Errorf("access_token_expired")
 	}
 
 	return nil
+}
+
+func (ds *datastore) SaveTokens() {
+	ds.mutex.Lock()
+	defer ds.mutex.Unlock()
+
+	// TODO save auth_tokens to a file
 }
 
 // accessTokenHandler TODO
@@ -110,4 +121,20 @@ func (wa *webapi) generateAccessToken(domain string) string {
 	t := time.Now().Add(time.Duration(wa.tokenTimeout) * time.Second)
 	wa.store.tokenMap[domain][accessToken] = t
 	return accessToken
+}
+
+// startSigHandler create a goroutine to wait for SIGINT calls,
+// gets the write lock then shuts down.
+func (wa *webapi) startSigHandler() {
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+
+	go func() {
+		for _ = range c {
+			fmt.Println("shutting down server")
+			wa.store.SaveTokens()
+			wa.store.mutex.Lock()
+			os.Exit(0)
+		}
+	}()
 }

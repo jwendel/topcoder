@@ -89,7 +89,7 @@ func (wa *webapi) proxyAuthHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := wa.ValidateAuthHeader(w, r, domain)
+	err := wa.store.ValidateAuthHeader(w, r, domain)
 	if err != nil {
 		badRequestHandler(w, r, err.Error())
 		return
