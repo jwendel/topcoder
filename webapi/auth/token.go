@@ -99,51 +99,10 @@ func (ds *datastore) loadTokens() error {
 	return nil
 }
 
-// accessTokenHandler is the route for generating access tokens.  It will load the client id
-// and secret from the request, validate it for the domain and return an UUID.
-// An error is written if anything goes wrong.
-func (wa *Webapi) accessTokenHandler(w http.ResponseWriter, r *http.Request) {
-	matches := tokenRegex.FindStringSubmatch(r.URL.Path)
-	if len(matches) != 2 {
-		notFoundHandler(w, r)
-		return
-	}
-
-	// matches[1] is the domain to lookup
-	domain := matches[1]
-	ok := wa.store.DomainExists(domain)
-	if !ok {
-		notFoundHandler(w, r)
-		return
-	}
-
-	r.ParseForm()
-	id := r.Form.Get("client_id")
-	secret := r.Form.Get("client_secret")
-	grant := r.Form.Get("grant_type")
-
-	err := wa.ValidateClient(domain, id, secret, grant)
-	if err != nil {
-		badRequestHandler(w, r, err.Error())
-		return
-	}
-
-	// access_token request is valid, generate token
-	token := wa.store.generateAccessToken(domain)
-	t := tokenResponse{token, "bearer", wa.store.tokenTimeout}
-	b, err := json.Marshal(t)
-	if err != nil {
-		internalErrorHandler(w, r)
-		return
-	}
-
-	successHandler(w, r, b)
-}
-
 // ValidateClient takes a domain and passed int client_id, client_secrent, and greant_type
 // then verifies the formats are correct and looks up the client information.  An error
 // is returned if any check fails.
-func (wa *Webapi) ValidateClient(domain, id, secret, grant string) error {
+func (ds *datastore) ValidateClient(domain, id, secret, grant string) error {
 	if len(id) == 0 || len(secret) == 0 || len(grant) == 0 {
 		return fmt.Errorf("invalid_request")
 	}
@@ -152,7 +111,7 @@ func (wa *Webapi) ValidateClient(domain, id, secret, grant string) error {
 		return fmt.Errorf("unsupported_grant_type")
 	}
 
-	d := wa.store.domainMap[domain]
+	d := ds.domainMap[domain]
 	s, ok := d.Clients[id]
 	if !ok || s != secret {
 		return fmt.Errorf("invalid_client")

@@ -10,8 +10,6 @@ Four .go files come with this package
 * **auth/token.go** - Handles much of the logic for the Oauth2 generation and authorizing.
 * **auth/util.go** - simple util methods, only contains encryptPassword helper.
 
-Along with the .go files in auth, there are test files for them as well (run with 'go test').  examples_test.go contains the tests outlined in the challenge.
-
 The default service starts up ":8080", but the port can be specified to example:
 
    `./webapi -listen=":80"`
@@ -40,11 +38,12 @@ I built Oauth changes into the existing auth package as it is they are a bit int
 Notes:
 
 * access_tokens can be optionally saved to disk using the "-tokensource" parameter.  If not specified, nothing is saved to disk.  The server must be killed with Ctrl-C (SIGINT) to save to disk.
-* The test cases should heavily verify the results we get back.
-* The expiration test check uses the loading of access_tokens.
-* http.go domainRouter funciton is an internal router based on the URL.  json.go or token.go will handle the bulk of the request based on the URL
-* http.go has helper functions for more easily writing out status to the client
-
+* examples_test.go contains the tests cases outlined in the challenge. They are commented in the file to easily follow.  They also verify the results of the requests.
+* The expiration test (case 9) check uses a token loaded from disk.
+* Along with the .go files in auth, there are test files for them as well (run with 'go test').
+* http.go domainRouter funciton is an internal router based on the URL.  json.go or token.go will handle the bulk of the request based on the URL.
+* util.go has helper functions for more easily writing out status to the http client
+* All access to the data maps are protected by a mutex (which should allow running this on multiple threads with GOMAXPROCS).
 
 Other
 -----

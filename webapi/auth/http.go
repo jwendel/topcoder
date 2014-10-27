@@ -126,47 +126,43 @@ func (wa *Webapi) proxyAuthHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// successHandler returns status 200 with the body populated with response.
-func successHandler(w http.ResponseWriter, r *http.Request, response []byte) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	_, err := w.Write(response)
+// accessTokenHandler is the route for generating access tokens.  It will load the client id
+// and secret from the request, validate it for the domain and return an UUID.
+// An error is written if anything goes wrong.
+func (wa *Webapi) accessTokenHandler(w http.ResponseWriter, r *http.Request) {
+	matches := tokenRegex.FindStringSubmatch(r.URL.Path)
+	if len(matches) != 2 {
+		notFoundHandler(w, r)
+		return
+	}
+
+	// matches[1] is the domain to lookup
+	domain := matches[1]
+	ok := wa.store.DomainExists(domain)
+	if !ok {
+		notFoundHandler(w, r)
+		return
+	}
+
+	r.ParseForm()
+	id := r.Form.Get("client_id")
+	secret := r.Form.Get("client_secret")
+	grant := r.Form.Get("grant_type")
+
+	err := wa.store.ValidateClient(domain, id, secret, grant)
+	if err != nil {
+		badRequestHandler(w, r, err.Error())
+		return
+	}
+
+	// access_token request is valid, generate token
+	token := wa.store.generateAccessToken(domain)
+	t := tokenResponse{token, "bearer", wa.store.tokenTimeout}
+	b, err := json.Marshal(t)
 	if err != nil {
 		internalErrorHandler(w, r)
 		return
 	}
-}
 
-// notFoundHandler returns 404 error
-func notFoundHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/plain")
-	w.WriteHeader(http.StatusNotFound)
-}
-
-// badRequestHandler returns error 400 with json body with 1 field of "error", with
-// a value of errStatus
-func badRequestHandler(w http.ResponseWriter, r *http.Request, errStatus string) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusBadRequest)
-
-	if len(errStatus) > 0 {
-		e := errorJSON{errStatus}
-		js, err := json.Marshal(e)
-		if err != nil {
-			internalErrorHandler(w, r)
-			return
-		}
-
-		_, err = w.Write(js)
-		if err != nil {
-			internalErrorHandler(w, r)
-			return
-		}
-	}
-}
-
-// internalErrorHandler returns an error 500
-func internalErrorHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/plain")
-	w.WriteHeader(http.StatusInternalServerError)
+	successHandler(w, r, b)
 }
