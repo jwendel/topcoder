@@ -1,6 +1,6 @@
 About Cache
 ===========
-This is an implementation of topcoder challenge: http://www.topcoder.com/challenge-details/30046225/?type=develop
+This is an implementation of topcoder challenge: http://community.topcoder.com/tc?module=ProjectDetail&pj=30046224
 
 This is a key/value cache server that will take input over TCP following telnet style input/output.  
 

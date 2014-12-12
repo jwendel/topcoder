@@ -1,6 +1,6 @@
 About
 ======
-The *auth* package is an implementation of the topcoder challenge: http://www.topcoder.com/challenge-details/30046011/?type=develop
+The *auth* package is an implementation of the topcoder challenge: http://community.topcoder.com/tc?module=ProjectDetail&pj=30046011
 
 Four .go files come with this package
 
